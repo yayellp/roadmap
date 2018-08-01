@@ -719,11 +719,9 @@ RSpec.describe User, type: :model do
 
       let!(:notification) { create(:notification, :dismissable) }
 
-      it "enter description here" do
-        expect do
-          subject
-          user.reload.notifications
-        end.to change { user.notifications }.to include(notification)
+      it "adds notification to User's notifications" do
+        subject
+        expect(user.notifications).to include(notification)
       end
 
     end
@@ -732,11 +730,9 @@ RSpec.describe User, type: :model do
 
       let!(:notification) { create(:notification) }
 
-      it "adds the Notification to the User's notifications" do
-        expect do
-          subject
-          user.reload.notifications
-        end.not_to change { user.notifications }
+      it "doesn't add notification to User's notifications" do
+        subject
+        expect(user.notifications).not_to include(notification)
       end
 
     end

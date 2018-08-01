@@ -367,17 +367,20 @@ class User < ActiveRecord::Base
   end
   ##
   # Case insensitive search over User model
-  # @param field [string] The name of the field being queried
+  # @param column [string] The name of the column being queried
   # @param val [string] The string to search for, case insensitive. val is duck typed to check whether or not downcase method exist
   # @return [ActiveRecord::Relation] The result of the search
-  def self.where_case_insensitive(field, val)
-    User.where(field.to_sym => val.to_s.downcase)
+  def self.where_case_insensitive(column, val)
+    unless column.to_s.in?(columns.map(&:name))
+      raise ArgumentError, "Invalid column name: #{column}"
+    end
+    User.where("LOWER(#{column}) = :value", value: val.to_s.downcase)
   end
 
   # Acknoledge a Notification
   # @param notification Notification to acknowledge
   def acknowledge(notification)
-    notifications << notification if notification.dismissable?
+    self.notifications << notification if notification.dismissable?
   end
 
   private
