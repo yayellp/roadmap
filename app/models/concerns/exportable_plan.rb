@@ -2,6 +2,8 @@
 
 module ExportablePlan
 
+  require "csv"
+
   def as_pdf(coversheet = false)
     prepare(coversheet)
   end
