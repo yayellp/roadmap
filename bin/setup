@@ -17,17 +17,14 @@ Dir.chdir APP_ROOT do
   system "bundle check || bundle install"
 
   puts "\n== Copying sample files =="
-  ensure_file(template: "./config/database.yml",
-              filename: "./config/database_example.yml")
+  ensure_file(filename: "./config/database.yml",
+              template: "./config/database_example.yml")
 
-  ensure_file(template: "./config/secrets.yml",
-              filename: "./config/secrets_example.yml")
+  ensure_file(filename: "./config/secrets.yml",
+              template: "./config/secrets_example.yml")
 
-  ensure_file(template: "./config/branding.yml",
-              filename: "./config/branding_example.yml")
-
-  ensure_file(template: "./config/initializers/devise.rb.example",
-              filename: "./config/branding_example.yml")
+  ensure_file(filename: "./config/branding.yml",
+              template: "./config/branding_example.yml")
 
   ensure_file(template: "./config/initializers/devise.rb.example",
               filename: "./config/initializers/devise.rb")
