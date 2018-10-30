@@ -17,26 +17,26 @@ Dir.chdir APP_ROOT do
   system "bundle check || bundle install"
 
   puts "\n== Copying sample files =="
-  ensure_file(template: "config/database.yml",
-              filename: "config/database_example.yml")
+  ensure_file(template: "./config/database.yml",
+              filename: "./config/database_example.yml")
 
-  ensure_file(template: "config/secrets.yml",
-              filename: "config/secrets_example.yml")
+  ensure_file(template: "./config/secrets.yml",
+              filename: "./config/secrets_example.yml")
 
-  ensure_file(template: "config/branding.yml",
-              filename: "config/branding_example.yml")
+  ensure_file(template: "./config/branding.yml",
+              filename: "./config/branding_example.yml")
 
-  ensure_file(template: "config/initializers/devise.rb.example",
-              filename:"config/branding_example.yml")
+  ensure_file(template: "./config/initializers/devise.rb.example",
+              filename: "./config/branding_example.yml")
 
-  ensure_file(template: "config/initializers/devise.rb.example",
-              filename: "config/initializers/devise.rb")
+  ensure_file(template: "./config/initializers/devise.rb.example",
+              filename: "./config/initializers/devise.rb")
 
-  ensure_file(template: "config/initializers/recaptcha.rb.example",
-              filename: "config/initializers/recaptcha.rb")
+  ensure_file(template: "./config/initializers/recaptcha.rb.example",
+              filename: "./config/initializers/recaptcha.rb")
 
-  ensure_file(template: "config/initializers/wicked_pdf.rb.example",
-              filename: "config/initializers/wicked_pdf.rb")
+  ensure_file(template: "./config/initializers/wicked_pdf.rb.example",
+              filename: "./config/initializers/wicked_pdf.rb")
 
   puts "\n== Preparing database =="
   system "bin/rake db:setup"
