@@ -15,8 +15,8 @@ module.exports = function karmaConfig(config) {
     files: [
       './node_modules/phantomjs-polyfill/bind-polyfill.js',
       './node_modules/jasmine-jquery/lib/jasmine-jquery.js',
-      'app/assets/javascripts/**/*Spec.js',
-      'app/assets/javascripts/spec/fixtures/**/*',
+      'app/javascript/**/*Spec.js',
+      'app/javascript/spec/fixtures/**/*',
     ],
 
 
@@ -28,9 +28,9 @@ module.exports = function karmaConfig(config) {
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
-      'app/assets/javascripts/**/*Spec.js': ['webpack'],
-      'app/assets/javascripts/**/*.html': ['html2js'],
-      'app/assets/javascripts/**/*.json': ['json_fixtures'],
+      'app/javascript/**/*Spec.js': ['webpack'],
+      'app/javascript/**/*.html': ['html2js'],
+      'app/javascript/**/*.json': ['json_fixtures'],
     },
 
     webpack: webpackConfig,
