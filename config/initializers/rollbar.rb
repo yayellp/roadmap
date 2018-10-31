@@ -7,7 +7,7 @@ rescue LoadError => e
   # noop
 end
 
-if defined?(Rollbar)
+if defined?(Rollbar) && ENV['ROLLBAR_ACCESS_TOKEN']
   Rollbar.configure do |config|
     # Without configuration, Rollbar is enabled in all environments.
     # To disable in specific environments, set config.enabled=false.
