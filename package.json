@@ -42,7 +42,7 @@
     "popper": "^1.0.1",
     "timeago.js": "^4.0.0-beta.1",
     "tinymce": "^4.8.3",
-    "webpack": "^4.23.1",
+    "webpack": "3",
     "webpack-manifest-plugin": "^2.0.4",
     "webpack-merge": "3"
   },
