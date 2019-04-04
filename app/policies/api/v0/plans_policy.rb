@@ -18,6 +18,10 @@ module Api
       def create?
         @template.present?
       end
+
+      def index
+        true
+      end
     end
   end
 end
