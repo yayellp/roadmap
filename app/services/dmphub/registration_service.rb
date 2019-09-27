@@ -35,7 +35,7 @@ module Dmphub
         id['category'] == 'doi'
       end
 
-      @errors << "register #{resp.code} : #{payload['error']} - #{payload['error_description']}" unless resp.code == 201
+      @errors << "register #{resp.code} : #{payload['errors'].inspect}" unless resp.code == 201
       @errors << "DMP registered but no DOI was returned!" if resp.code == 201 && doi.blank?
 
       Rails.logger.error @errors.join(', ') if @errors.any?
@@ -48,11 +48,11 @@ module Dmphub
 
       resp = HTTParty.get(@show_path, headers: authenticated_headers)
       payload = JSON.parse(resp.body)
-      @errors << "#{payload['error']} - #{payload['error_description']}" unless resp.code == 200
+      @errors << "#{payload['errors'].inspect}" unless resp.code == 200
 
       Rails.logger.error @errors.join(', ') if @errors.any?
 
-      resp.code == 200 && payload['error'].empty? && payload['title'].present?
+      resp.code == 200 && payload['errors'].empty? && payload['title'].present?
     end
 
     private

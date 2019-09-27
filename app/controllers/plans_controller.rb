@@ -370,13 +370,9 @@ class PlansController < ApplicationController
         dmp_as_json = render_to_string partial: '/plans/rda_common_standard', locals: { plan: plan }
         doi = service.register(dmp: dmp_as_json)
 
-        redirect_to 'share',
         err = _('Unable to secure a DOI for your plan at this time') unless doi.present?
 
         plan.update(doi: doi)
-
-p "ERR: #{err.inspect}"
-p "DOI: #{doi}"
 
         if err.present?
           render status: :bad_request, json: {
