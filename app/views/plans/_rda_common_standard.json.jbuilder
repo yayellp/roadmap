@@ -7,10 +7,12 @@ json.dmp do
   json.title plan.title
   json.description plan.description
 
-  json.dmp_ids do
-    json.array! 1.times do
-      json.category 'url'
-      json.value plan_url(plan)
+  unless plan_url.present?
+    json.dmp_ids do
+      json.array! 1.times do
+        json.category 'url'
+        json.value plan_url(plan.id)
+      end
     end
   end
 
@@ -28,6 +30,8 @@ json.dmp do
     if plan.template.org.present? && fundref_id.present? && fundref_id.identifier.present?
       json.project do
         json.title plan.title
+        json.start_on plan.created_at.to_s
+        json.end_on (plan.created_at + 1.years).to_s
         json.funding do
           json.array! 1.times do
             json.funder_id fundref_id.identifier
