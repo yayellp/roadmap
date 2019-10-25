@@ -28,17 +28,20 @@ module Dmphub
     def register(dmp:)
       retrieve_auth_token unless @token.present?
       return nil unless dmp.present?
-
-      resp = HTTParty.post(@create_path, body: JSON.parse(dmp), headers: authenticated_headers)
-      payload = JSON.parse(resp.body)
-
       errs = []
-      errs << payload.fetch('errors', ['Something went wrong']).flatten unless payload.fetch('items', []).any?
 
-      doi = payload.fetch('items', []).first&.fetch('dmp', {})&.fetch('dmpIds', [])&.select do |id|
-        id['category'] == 'DOI'
+      errs << 'Invalid DMP: Your plan must have a title and an owner.' unless validate(dmp: dmp)
+
+      if errs.empty?
+        resp = HTTParty.post(@create_path, body: JSON.parse(dmp), headers: authenticated_headers)
+        payload = JSON.parse(resp.body)
+        errs << payload.fetch('errors', ['Something went wrong']).flatten unless payload.fetch('items', []).any?
+
+        doi = payload.fetch('items', []).first&.fetch('dmp', {})&.fetch('dmpIds', [])&.select do |id|
+          id['category'] == 'DOI'
+        end
+        errs >> "DMP registered but no DOI was returned!" if resp.code == 201 && doi.empty?
       end
-      errs >> "DMP registered but no DOI was returned!" if resp.code == 201 && doi.empty?
 
       { 'doi': doi&.first&.fetch('value', nil), 'errors': errs }
     end
@@ -81,6 +84,17 @@ module Dmphub
       })
     end
 
+    def validate(dmp:)
+      json = JSON.parse(dmp)
+      json['dmp'].present? && json['dmp']['title'].present? &&
+                              json['dmp']['downloadURL'].present? &&
+                              json['dmp']['dmpIds'].any? &&
+                              json['dmp']['contact'].present?
+    rescue JSON::ParserError => pe
+      p "Invalid JSON! #{pe.message}"
+      p "Received: #{dmp}"
+      return false
+    end
   end
 
 end

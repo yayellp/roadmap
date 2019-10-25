@@ -9,13 +9,13 @@ module Dmphub
       def plan_to_rda_json(plan:)
         return {} unless plan.present? && plan.is_a?(Plan)
 
-        @ror_scheme_id = IdentifierScheme.where(name: 'ror').first&.id
-        @orcid_scheme_id = IdentifierScheme.where(name: 'orcid').first&.id
-        @fundref_scheme_id = IdentifierScheme.where(name: 'fundref').first&.id
+        @ror_scheme = IdentifierScheme.where(name: 'ror').first
+        @orcid_scheme = IdentifierScheme.where(name: 'orcid').first
+        @fundref_scheme = IdentifierScheme.where(name: 'fundref').first
 
         @plan = plan
         contact = plan_contact
-        language = @plan.owner.language || Language.default
+        language = @plan.owner&.language || Language.default
 
         @plan_info = {
           landing_page_uri: Rails.application.routes.url_helpers.plan_url(@plan),
@@ -38,8 +38,13 @@ module Dmphub
       def user_to_hash(user:)
         return {} unless user.present? && user.is_a?(User)
 
-        orcid = user.user_identifiers(identifier_scheme_id: @orcid_scheme_id).first if @orcid_scheme_id.present?
-        ror = user.org.org_identifiers.where(identifier_scheme: @ror_scheme_id).first if @ror_scheme_id.present?
+        # For some reason user.user_identifiers always returns the last identifier
+        # regardless of our identifier_scheme criteria. Rails has a nasty way of
+        # just returning `Model.all` when a scope finds no records :/
+        orcid = UserIdentifier.where(user_id: user.id, identifier_scheme: @orcid_scheme).first
+        #orcid = user.user_identifiers(identifier_scheme: @orcid_scheme).first if @orcid_scheme.present?
+
+        ror = user.org.org_identifiers.where(identifier_scheme: @ror_scheme).first if @ror_scheme.present?
 
         ret = {
           uid: user.id,
@@ -61,9 +66,11 @@ module Dmphub
           hash = { name: @plan.data_contact, mail: @plan.data_contact_email } unless hash.present?
         else
           # If no data contact was defined use the owner
-          owner = @plan.owner || @plan.roles.editor.not_creator.map(&:user).first&.user
-          hash = user_to_hash(owner)
+          owner = @plan.owner
+          owner = @plan.roles.editor.not_creator.first&.user unless owner.present?
+          hash = user_to_hash(user: owner) if owner.present?
         end
+        return {} unless hash.present?
         hash[:contributor_type] = 'primary_contact'
         hash
       end
@@ -119,7 +126,7 @@ module Dmphub
       def funding
         return {} unless @plan.template.org.funder?
 
-        fundref = @plan.template.org.org_identifiers.where(identifier_scheme_id: @fundref_scheme_id).first
+        fundref = @plan.template.org.org_identifiers.where(identifier_scheme: @fundref_scheme).first
         {
           name: @plan.template.org.name,
           id: fundref&.identifier
