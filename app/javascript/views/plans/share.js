@@ -19,15 +19,20 @@ $(() => {
   });
 
   $('#set_register').on('ajax:success', (e, data) => {
+    $(e.target).find('.spinner').html('');
     if (isObject(data) && isString(data.msg)) {
       notifier.renderNotice(data.msg);
     }
   });
   $('#set_register').on('ajax:error', (e, xhr) => {
+    $(e.target).find('.spinner').html('');
     if (isObject(xhr.responseJSON)) {
-      notifier.renderAlert(xhr.responseJSON.msg);
+      notifier.renderAlert(`Unable to register your plan: ${xhr.responseJSON.msg[0]}`);
     } else {
-      notifier.renderAlert(`${xhr.statusCode} - ${xhr.statusText}`);
+      notifier.renderAlert(`Unable to register your plan: ${xhr.statusText}`);
     }
+  });
+  $('#set_register').on('submit', (e) => {
+    $(e.target).find('.spinner').html('Registering your plan ... please wait');
   });
 });

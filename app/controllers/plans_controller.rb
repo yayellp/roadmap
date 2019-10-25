@@ -365,22 +365,27 @@ class PlansController < ApplicationController
         service = Dmphub::RegistrationService.new
         # TODO: Figure out workflow for updating a DMP (is it user triggered like this initial registration
         #       or do we auto-publish changes if the plan has a DOI?)
-        err = _('Your plan is already registered!') if plan.doi? && service.is_published?(plan.doi)
+        err = _('Your plan is already registered!') if plan.doi?
 
-        dmp_as_json = render_to_string partial: '/plans/rda_common_standard', locals: { plan: plan }
-        doi = service.register(dmp: dmp_as_json)
+        payload = Dmphub::ConversionService.plan_to_rda_json(plan: plan)
 
-        err = _('Unable to secure a DOI for your plan at this time') unless doi.present?
-
-        plan.update(doi: doi)
+        if payload.empty?
+          err = _('Unable to generate RDA JSON for your plan!')
+        else
+          payload = service.register(dmp: payload)
+          err = payload[:errors]&.first if payload[:errors].any?
+          plan.update(doi: payload[:doi]) unless err.present?
+        end
 
         if err.present?
           render status: :bad_request, json: {
             code: 0, msg: err || _("Unable to register a DOI for your plan at this time.")
           }
         else
+          url = "#{Branding.fetch(:dmphub, :base_path)}/dmps/#{payload[:doi]}"
+          link = "<a href=\"#{url}\" target=\"_blank\">#{payload[:doi]}</a>"
           render json: {
-            code: 1, msg: "Successfully registered your plan. Your new DOI is: %{doi}" % { doi: doi }
+            code: 1, msg: "Successfully registered your plan. Your new DOI is: %{doi}" % { doi: link }
           }
         end
       else

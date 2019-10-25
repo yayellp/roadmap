@@ -43,6 +43,7 @@
   <fieldset<%= (allow_visibility && @plan.doi.blank? ? '' : ' disabled') %>>
     <div class="col-xs-8">
       <%= f.submit _('Register your plan') %>
+      <span class="spinner"></span>
     </div>
   </fieldset>
   <div id="plan_citation">
