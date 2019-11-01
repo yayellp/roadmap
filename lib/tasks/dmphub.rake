@@ -28,6 +28,9 @@ namespace :dmphub do
         payload = Dmphub::ConversionService.plan_to_rda_json(plan: plan)
         p "Unable to generate RDA JSON for plan #{plan.id}" if payload.empty?
         resp = hub.register(dmp: payload)
+
+p resp
+
         p "Unable to register plan #{plan.id}: #{resp[:errors].flatten.join(', ')}" if resp[:errors].any?
         plan.update(doi: resp[:doi]) unless resp[:errors].any?
       rescue StandardError => se

@@ -34,16 +34,23 @@ module Dmphub
 
       if errs.empty?
         resp = HTTParty.post(@create_path, body: JSON.parse(dmp), headers: authenticated_headers)
-        payload = JSON.parse(resp.body)
-        errs << payload.fetch('errors', ['Something went wrong']).flatten unless payload.fetch('items', []).any?
 
-        doi = payload.fetch('items', []).first&.fetch('dmp', {})&.fetch('dmpIds', [])&.select do |id|
-          id['category'] == 'DOI'
+        if resp.code == 201
+          errs << 'DMP registered but no DOI was returned!' unless resp.headers['location'].present?
+          doi = resp.headers['location']
+        else
+          payload = JSON.parse(resp.body)
+          errs << payload.fetch('errors', ['Something went wrong']).flatten unless payload.fetch('items', []).any?
         end
-        errs >> "DMP registered but no DOI was returned!" if resp.code == 201 && doi.empty?
       end
+      { 'doi': doi, 'errors': errs }
 
-      { 'doi': doi&.first&.fetch('value', nil), 'errors': errs }
+    rescue JSON::ParserError => pe
+
+p dmp.inspect
+
+      Rails.logger.error "Error registering DMP: - HTTP: #{resp&.code}, #{pe.message}"
+      nil
     end
 
     def is_published?(doi:)
