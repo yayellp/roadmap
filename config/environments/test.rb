@@ -45,3 +45,6 @@ Rails.application.configure do
   # config.action_view.raise_on_missing_translations = true
 
 end
+
+# Defines the test domain/host that will be used when calling a Rails url helper
+Rails.application.default_url_options = { host: "example.org" }
