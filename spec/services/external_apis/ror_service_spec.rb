@@ -165,6 +165,11 @@ RSpec.describe ExternalApis::RorService do
         rslts = described_class.send(:local_org_search, name: "3784658y38tyq349g")
         expect(rslts.empty?).to eql(true)
       end
+      it "ignores case sensitivity" do
+        rslts = described_class.send(:local_org_search, name: @org.name.upcase)
+        expect(rslts.length).to eql(1)
+        expect(rslts.first).to eql(@org)
+      end
     end
   end
 
@@ -327,6 +332,33 @@ RSpec.describe ExternalApis::RorService do
       }.to_json
       expected = "Example College"
       expect(described_class.send(:org_name, item: JSON.parse(json))).to eql(expected)
+    end
+  end
+
+  describe "#resort" do
+    before(:each) do
+      array = [
+        { id: Faker::Internet.url, name: "Foo Test" },
+        { id: Faker::Internet.url, name: "Foo Bar" },
+        { id: Faker::Internet.url, name: "Test Foo" },
+        { id: Faker::Internet.url, name: "Foo Bar (test)" },
+        { id: Faker::Internet.url, name: "Test Bar" },
+        { id: Faker::Internet.url, name: "Bar Foo" }
+      ]
+      @results = described_class.send(:resort, array: array, name: "test")
+    end
+
+    it "places matches that start with the search word first" do
+      expect(@results[0][:name]).to eql("Test Bar")
+      expect(@results[1][:name]).to eql("Test Foo")
+    end
+    it "places matches that do not start with but contain the search word next" do
+      expect(@results[2][:name]).to eql("Foo Test")
+      expect(@results[3][:name]).to eql("Foo Bar (test)")
+    end
+    it "places matches that do not contain the search word at the end" do
+      expect(@results[4][:name]).to eql("Bar Foo")
+      expect(@results[5][:name]).to eql("Foo Bar")
     end
   end
 

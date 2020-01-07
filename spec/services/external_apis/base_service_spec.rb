@@ -40,25 +40,24 @@ RSpec.describe ExternalApis::BaseService do
     before(:each) do
       @err = Exception.new(Faker::Lorem.sentence)
     end
-    it "does not write to the log if clazz is undefined" do
-      expect(described_class.log_error(clazz: nil, meth: Faker::Lorem.word, error: @err)).to eql(nil)
-    end
     it "does not write to the log if method is undefined" do
-      expect(described_class.log_error(clazz: self, meth: nil, error: @err)).to eql(nil)
+      expect(described_class.log_error(method: nil, error: @err)).to eql(nil)
     end
     it "does not write to the log if error is undefined" do
-      expect(described_class.log_error(clazz: self, meth: Faker::Lorem.word, error: nil)).to eql(nil)
+      expect(described_class.log_error(method: Faker::Lorem.word, error: nil)).to eql(nil)
     end
     it "writes to the log" do
       Rails.logger.expects(:error).at_least(1)
-      described_class.log_error(clazz: self, meth: Faker::Lorem.word, error: @err)
+      described_class.log_error(method: Faker::Lorem.word, error: @err)
     end
   end
 
   context "private methods" do
-    it "#config returns the branding config" do
-      expected = Rails.application.config.branding
-      expect(described_class.send(:config)).to eql(expected)
+    context "#config" do
+      it "returns the branding.yml config" do
+        expected = Rails.application.config.branding
+        expect(described_class.send(:config)).to eql(expected)
+      end
     end
     context "#app_name" do
       it "defaults to the Rails.application.class.name" do
@@ -112,11 +111,11 @@ RSpec.describe ExternalApis::BaseService do
         word = Faker::Lorem.word
         headers["Foo"] = word
         # If the stub here works then this test passed
-        stub_request(:get, @uri).with(headers: headers)
+        stub_request(:get, @uri).with(headers: described_class.headers)
                                 .to_return(status: 200, body: "", headers: {})
         resp = described_class.send(:http_get, uri: @uri,
                                     additional_headers: { "Foo": word })
-        expect(resp.code).to eql("200")
+        expect(resp.is_a?(Net::HTTPSuccess)).to eql(true)
       end
       it "allows base headers to be overwritten" do
         headers = described_class.headers
@@ -127,8 +126,35 @@ RSpec.describe ExternalApis::BaseService do
                                 .to_return(status: 200, body: "", headers: {})
         resp = described_class.send(:http_get, uri: @uri,
                                     additional_headers: { "Accept": word })
-        expect(resp.code).to eql("200")
+        expect(resp.is_a?(Net::HTTPSuccess)).to eql(true)
+      end
+      it "follows redirects" do
+        uri2 = "#{@uri}/redirected"
+        stub_redirect(uri: @uri, redirect_to: uri2)
+        stub_request(:get, uri2).with(headers: described_class.headers)
+                                .to_return(status: 200, body: "", headers: {})
+
+        resp = described_class.send(:http_get, uri: @uri)
+        expect(resp.is_a?(Net::HTTPSuccess)).to eql(true)
+      end
+      it "does not allow more than the max number of redirects" do
+        (described_class.max_redirects).times.each do |i|
+          stub_redirect(uri: "#{@uri}/redirect#{i}",
+                        redirect_to: "#{@uri}/redirect#{i + 1}")
+        end
+        final_uri = "#{@uri}/redirect#{described_class.max_redirects}"
+        stub_request(:get, final_uri).with(headers: described_class.headers)
+                                .to_return(status: 200, body: "", headers: {})
+
+        resp = described_class.send(:http_get, uri: "#{@uri}/redirect0")
+        expect(resp.is_a?(Net::HTTPRedirection)).to eql(true)
       end
     end
+  end
+
+  def stub_redirect(uri:, redirect_to:)
+    stub_request(:get, uri).with(headers: described_class.headers)
+                           .to_return(status: 301, body: "",
+                                      headers: { "Location": redirect_to })
   end
 end

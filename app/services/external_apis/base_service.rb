@@ -14,6 +14,7 @@ module ExternalApis
     mattr_accessor :base_url
     mattr_accessor :max_pages
     mattr_accessor :max_results_per_page
+    mattr_accessor :max_redirects
 
     class << self
 
@@ -23,6 +24,9 @@ module ExternalApis
       end
 
       # The standard headers to be used when communicating with an external API.
+      # These headers can be overriden or added to when calling an external API
+      # by sending your changes in the `additional_headers` attribute of
+      # `http_get`
       def headers
         {
           "Content-Type": "application/json",
@@ -33,7 +37,7 @@ module ExternalApis
         }
       end
 
-      # Logs the results of a failed HTTP response from ROR
+      # Logs the results of a failed HTTP response
       def handle_http_failure(method:, http_response:)
         content = http_response.inspect
         msg = "received a #{http_response.code} response with: #{content}!"
@@ -68,7 +72,7 @@ module ExternalApis
 
       # Makes a GET request to the specified uri with the additional headers.
       # Additional headers are combined with the base headers defined above.
-      def http_get(uri:, additional_headers: {})
+      def http_get(uri:, additional_headers: {}, tries: 1)
         return nil unless uri.present?
 
         uri = URI.parse(uri)
@@ -77,10 +81,15 @@ module ExternalApis
         req = Net::HTTP::Get.new(uri.request_uri)
         headers.each { |k, v| req[k] = v }
         additional_headers.each { |k, v| req[k] = v }
-        http.request(req)
-
+        resp = http.request(req)
+        # If we received a redirect then follow it as long as
+        if resp.is_a?(Net::HTTPRedirection) && (tries < max_redirects)
+          resp = http_get(uri: resp["location"], additional_headers: {},
+                          tries: tries + 1)
+        end
+        resp
       rescue StandardError => se
-        log_error(clazz: self.class.name, meth: uri, error: se)
+        log_error(method: uri, error: se)
         return nil
       end
 

@@ -6,4 +6,5 @@ ExternalApis::RorService.setup do |config|
   config.search_path = "organizations"
   config.max_pages = 5
   config.max_results_per_page = 20
+  config.max_redirects = 3
 end

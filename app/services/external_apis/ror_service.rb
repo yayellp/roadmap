@@ -15,8 +15,8 @@ module ExternalApis
 
       # Ping the ROR API to determine if it is online
       def ping
-        res = http_get(uri: "#{base_url}#{heartbeat_path}")
-        res.code == "200"
+        resp = http_get(uri: "#{base_url}#{heartbeat_path}")
+        resp.is_a?(Net::HTTPSuccess)
       end
 
       # Search the ROR API for the given string. This will search name, acronyms, aliases, etc.
@@ -26,7 +26,8 @@ module ExternalApis
         return [] unless name.present?
         return local_org_search(name: name) unless ping
 
-        process_pages(name: name, json: ror_name_search(name: name))
+        results = process_pages(name: name, json: ror_name_search(name: name))
+        resort(array: results, name: name)
 
       # If a JSON parse error occurs then return results of a local table search
       rescue JSON::ParserError => pe
@@ -38,12 +39,13 @@ module ExternalApis
 
       # If a name is present do a LIKE search against the Org name or abbreviation
       # otherwise return all Orgs (except is_other)
+      # Thiss is the fallback method used when ROR is offline
       def local_org_search(name:)
         return Org.where(is_other: false).order(:name) unless name.present?
 
-        term = "%#{name}%"
+        term = "%#{name.downcase}%"
         Org.where(is_other: false)
-           .where("name LIKE ? OR abbreviation LIKE ?", term, term)
+           .where("LOWER(name) LIKE ? OR LOWER(abbreviation) LIKE ?", term, term)
            .order(:name)
       end
 
@@ -52,8 +54,10 @@ module ExternalApis
         return [] unless name.present?
 
         resp = http_get(uri: "#{base_url}#{search_path}?query=#{name}&page=#{page}")
-        handle_http_failure(method: "search", http_response: resp) unless resp.code == "200"
-        return [] unless resp.code == "200"
+        unless resp.is_a?(Net::HTTPSuccess)
+          handle_http_failure(method: "search", http_response: resp)
+          return []
+        end
 
         JSON.parse(resp.body)
       end
@@ -111,6 +115,40 @@ module ExternalApis
 
         # Otherwise return the contextualized name
         "#{item["name"]} (#{website ? website : country})"
+      end
+
+      # Resorts the results returned from ROR so that any exact matches
+      # appear at the top of the list. For example a search for `Example`:
+      #     - Example College
+      #     - Example University
+      #     - University of Example
+      #     - Universidade de Examplar
+      #     - Another College that ROR has a matching alias for
+      def resort(array:, name:)
+        at_start, within, others = [], [], []
+
+        array.each do |item|
+          item_name = item[:name].downcase
+
+          if item_name.start_with?(name.downcase)
+            at_start << item
+          elsif item_name.include?(name.downcase)
+            within << item
+          else
+            others << item
+          end
+        end
+
+        # Sort the within array by the location of the name within the string
+        within = within.sort do |a, b|
+          first = a[:name].downcase.index(name.downcase)
+          second = b[:name].downcase.index(name.downcase)
+          first <=> second
+        end
+
+        at_start.sort { |a, b| a[:name] <=> b[:name] } +
+        within +
+        others.sort { |a, b| a[:name] <=> b[:name] }
       end
 
     end
