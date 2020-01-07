@@ -19,8 +19,12 @@ module ExternalApis
         resp.is_a?(Net::HTTPSuccess)
       end
 
-      # Search the ROR API for the given string. This will search name, acronyms, aliases, etc.
-      # @return an Array of Hashes { id: 'https://ror.org/12345', name: 'Sample University' }
+      # Search the ROR API for the given string. This will search name, acronyms,
+      # aliases, etc.
+      # @return an Array of Hashes:
+      # {
+      #   id: 'https://ror.org/12345', name: 'Sample University'
+      # }
       # The ROR limit appears to be 40 results (even with paging :/)
       def search(name:)
         return [] unless name.present?
@@ -30,9 +34,9 @@ module ExternalApis
         resort(array: results, name: name)
 
       # If a JSON parse error occurs then return results of a local table search
-      rescue JSON::ParserError => pe
-        log_error(method: "search", error: pe)
-        return local_org_search(name: name)
+      rescue JSON::ParserError => e
+        log_error(method: "search", error: e)
+        local_org_search(name: name)
       end
 
       private
@@ -63,6 +67,8 @@ module ExternalApis
       end
 
       # Recursive method that can handle multiple ROR result pages if necessary
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      # rubocop:disable Metrics/CyclomaticComplexity
       def process_pages(name:, json:)
         return [] if json.blank?
 
@@ -82,10 +88,12 @@ module ExternalApis
 
       # If we encounter a JSON parse error on subsequent page requests then just
       # return what we have so far
-      rescue JSON::ParserError => pe
-        log_error(method: "search", error: pe)
-        return results || []
+      rescue JSON::ParserError => e
+        log_error(method: "search", error: e)
+        results || []
       end
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+      # rubocop:enable Metrics/CyclomaticComplexity
 
       # Convert the JSON items into a hash of: { id: "ROR URL", name: "Org Name" }
       def parse_ror_results(json:)
@@ -94,6 +102,7 @@ module ExternalApis
 
         json["items"].each do |item|
           next unless item["id"].present? && item["name"].present?
+
           results << { id: item["id"], name: org_name(item: item) }
         end
         results
@@ -103,19 +112,24 @@ module ExternalApis
       # the country. For example:
       #    "Example College (example.edu)"
       #    "Example College (Brazil)"
+      #
+      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable Metrics/CyclomaticComplexity
       def org_name(item:)
         return "" unless item.present? && item["name"].present?
 
         country = item.fetch("country", {}).fetch("country_name", "")
         website = item.fetch("links", []).first
-        domain_regex = /^(?:http:\/\/|www\.|https:\/\/)([^\/]+)/
+        domain_regex = %r{^(?:http://|www\.|https://)([^/]+)}
         website = website.scan(domain_regex).last.first if website.present?
         # If no website or country then just return the name
         return item["name"] unless website.present? || country.present?
 
         # Otherwise return the contextualized name
-        "#{item["name"]} (#{website ? website : country})"
+        "#{item['name']} (#{website || country})"
       end
+      # rubocop:enable Metrics/AbcSize
+      # rubocop:enable Metrics/CyclomaticComplexity
 
       # Resorts the results returned from ROR so that any exact matches
       # appear at the top of the list. For example a search for `Example`:
@@ -124,8 +138,12 @@ module ExternalApis
       #     - University of Example
       #     - Universidade de Examplar
       #     - Another College that ROR has a matching alias for
+      #
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       def resort(array:, name:)
-        at_start, within, others = [], [], []
+        at_start = []
+        within = []
+        others = []
 
         array.each do |item|
           item_name = item[:name].downcase
@@ -147,11 +165,13 @@ module ExternalApis
         end
 
         at_start.sort { |a, b| a[:name] <=> b[:name] } +
-        within +
-        others.sort { |a, b| a[:name] <=> b[:name] }
+          within +
+          others.sort { |a, b| a[:name] <=> b[:name] }
       end
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
     end
+
   end
 
 end

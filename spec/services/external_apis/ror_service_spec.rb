@@ -46,7 +46,7 @@ RSpec.describe ExternalApis::RorService do
         @name = Faker::Lorem.word
         uri = "#{@search}?page=1&query=#{@name}"
         stub_request(:get, uri).with(headers: @headers)
-          .to_return(status: 404, body: "", headers: {})
+                               .to_return(status: 404, body: "", headers: {})
       end
       it "returns an empty array" do
         expect(described_class.search(name: @name)).to eql([])
@@ -62,12 +62,12 @@ RSpec.describe ExternalApis::RorService do
         "number_of_results": 0,
         "time_taken": 23,
         "items": [],
-        "meta": { "types": [], "countries"=>[] }
+        "meta": { "types": [], "countries" => [] }
       }
       name = Faker::Lorem.word
       uri = "#{@search}?page=1&query=#{name}"
       stub_request(:get, uri).with(headers: @headers)
-        .to_return(status: 200, body: results.to_json, headers: {})
+                             .to_return(status: 200, body: results.to_json, headers: {})
       expect(described_class.search(name: name)).to eql([])
     end
 
@@ -89,7 +89,7 @@ RSpec.describe ExternalApis::RorService do
               "external_ids": {
                 "GRID": { "preferred": "grid.12345.1", "all": "grid.12345.1" }
               }
-            },{
+            }, {
               "id": "https://ror.org/0987654321",
               "name": "Universidade de Example",
               "types": ["Education"],
@@ -107,7 +107,7 @@ RSpec.describe ExternalApis::RorService do
         name = Faker::Lorem.word
         uri = "#{@search}?page=1&query=#{name}"
         stub_request(:get, uri).with(headers: @headers)
-          .to_return(status: 200, body: results.to_json, headers: {})
+                               .to_return(status: 200, body: results.to_json, headers: {})
         @orgs = described_class.search(name: name)
       end
 
@@ -117,7 +117,7 @@ RSpec.describe ExternalApis::RorService do
 
       it "includes the website in the name (if available)" do
         expected = {
-          id:  "https://ror.org/1234567890",
+          id: "https://ror.org/1234567890",
           name: "Example University (example.edu)"
         }
         expect(@orgs.include?(expected)).to eql(true)
@@ -125,7 +125,7 @@ RSpec.describe ExternalApis::RorService do
 
       it "includes the country in the name (if no website is available)" do
         expected = {
-          id:  "https://ror.org/0987654321",
+          id: "https://ror.org/0987654321",
           name: "Universidade de Example (Mexico)"
         }
         expect(@orgs.include?(expected)).to eql(true)
@@ -195,13 +195,13 @@ RSpec.describe ExternalApis::RorService do
     end
     it "calls the handle_http_failure method if a non 200 response is received" do
       stub_request(:get, @uri).with(headers: @headers)
-        .to_return(status: 403, body: "", headers: {})
+                              .to_return(status: 403, body: "", headers: {})
       described_class.expects(:handle_http_failure).at_least(1)
       expect(described_class.send(:ror_name_search, name: @name)).to eql([])
     end
     it "returns the response body as JSON" do
       stub_request(:get, @uri).with(headers: @headers)
-        .to_return(status: 200, body: @results.to_json, headers: {})
+                              .to_return(status: 200, body: @results.to_json, headers: {})
       expect(described_class.send(:ror_name_search, name: @name)).not_to eql([])
     end
   end
@@ -217,7 +217,8 @@ RSpec.describe ExternalApis::RorService do
     end
 
     it "returns an empty array if json is blank" do
-      expect(described_class.send(:process_pages, name: @name, json: nil).length).to eql(0)
+      rslts = described_class.send(:process_pages, name: @name, json: nil)
+      expect(rslts.length).to eql(0)
     end
     it "properly manages results with only one page" do
       items = 4.times.map do
@@ -227,9 +228,10 @@ RSpec.describe ExternalApis::RorService do
           "country": { "country_name": Faker::Lorem.word }
         }
       end
-      results1 = { "number_of_results": 4, "items": items}
+      results1 = { "number_of_results": 4, "items": items }
 
-      stub_request(:get, "#{@search}?page=1&query=#{@name}").with(headers: @headers)
+      stub_request(:get, "#{@search}?page=1&query=#{@name}")
+        .with(headers: @headers)
         .to_return(status: 200, body: results1.to_json, headers: {})
 
       json = JSON.parse({ "items": items, "number_of_results": 4 }.to_json)
@@ -248,9 +250,11 @@ RSpec.describe ExternalApis::RorService do
       results1 = { "number_of_results": 7, "items": items[0..4] }
       results2 = { "number_of_results": 7, "items": items[5..6] }
 
-      stub_request(:get, "#{@search}?page=1&query=#{@name}").with(headers: @headers)
+      stub_request(:get, "#{@search}?page=1&query=#{@name}")
+        .with(headers: @headers)
         .to_return(status: 200, body: results1.to_json, headers: {})
-      stub_request(:get, "#{@search}?page=2&query=#{@name}").with(headers: @headers)
+      stub_request(:get, "#{@search}?page=2&query=#{@name}")
+        .with(headers: @headers)
         .to_return(status: 200, body: results2.to_json, headers: {})
 
       json = JSON.parse({ "items": items[0..4], "number_of_results": 7 }.to_json)
@@ -268,9 +272,11 @@ RSpec.describe ExternalApis::RorService do
       results1 = { "number_of_results": 12, "items": items[0..4] }
       results2 = { "number_of_results": 12, "items": items[5..9] }
 
-      stub_request(:get, "#{@search}?page=1&query=#{@name}").with(headers: @headers)
+      stub_request(:get, "#{@search}?page=1&query=#{@name}")
+        .with(headers: @headers)
         .to_return(status: 200, body: results1.to_json, headers: {})
-      stub_request(:get, "#{@search}?page=2&query=#{@name}").with(headers: @headers)
+      stub_request(:get, "#{@search}?page=2&query=#{@name}")
+        .with(headers: @headers)
         .to_return(status: 200, body: results2.to_json, headers: {})
 
       json = JSON.parse({ "items": items[0..4], "number_of_results": 12 }.to_json)
@@ -288,7 +294,7 @@ RSpec.describe ExternalApis::RorService do
         { "id": Faker::Internet.url, "name": Faker::Lorem.word },
         { "id": Faker::Internet.url },
         { "name": Faker::Lorem.word }
-      ]}.to_json
+      ] }.to_json
       items = described_class.send(:parse_ror_results, json: JSON.parse(json))
       expect(items.length).to eql(1)
     end
@@ -296,7 +302,7 @@ RSpec.describe ExternalApis::RorService do
       json = { "items": [
         { "id": Faker::Internet.url, "name": Faker::Lorem.word },
         { "id": Faker::Internet.url, "name": Faker::Lorem.word }
-      ]}.to_json
+      ] }.to_json
       items = described_class.send(:parse_ror_results, json: JSON.parse(json))
       expect(items.length).to eql(2)
     end

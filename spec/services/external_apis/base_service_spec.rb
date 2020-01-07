@@ -100,34 +100,6 @@ RSpec.describe ExternalApis::BaseService do
                                 .to_return(status: 200, body: "", headers: {})
         expect(described_class.send(:http_get, uri: @uri).code).to eql("200")
       end
-      it "accomodates HTTPS" do
-        uri = @uri.gsub("http:", "https:")
-        stub_request(:get, @uri).with(headers: described_class.headers)
-                                .to_return(status: 200, body: "", headers: {})
-        expect(described_class.send(:http_get, uri: @uri).code).to eql("200")
-      end
-      it "allows additional headers" do
-        headers = described_class.headers
-        word = Faker::Lorem.word
-        headers["Foo"] = word
-        # If the stub here works then this test passed
-        stub_request(:get, @uri).with(headers: described_class.headers)
-                                .to_return(status: 200, body: "", headers: {})
-        resp = described_class.send(:http_get, uri: @uri,
-                                    additional_headers: { "Foo": word })
-        expect(resp.is_a?(Net::HTTPSuccess)).to eql(true)
-      end
-      it "allows base headers to be overwritten" do
-        headers = described_class.headers
-        word = Faker::Lorem.word
-        headers["Accept"] = word
-        # If the stub here works then this test passed
-        stub_request(:get, @uri).with(headers: headers)
-                                .to_return(status: 200, body: "", headers: {})
-        resp = described_class.send(:http_get, uri: @uri,
-                                    additional_headers: { "Accept": word })
-        expect(resp.is_a?(Net::HTTPSuccess)).to eql(true)
-      end
       it "follows redirects" do
         uri2 = "#{@uri}/redirected"
         stub_redirect(uri: @uri, redirect_to: uri2)
@@ -138,16 +110,62 @@ RSpec.describe ExternalApis::BaseService do
         expect(resp.is_a?(Net::HTTPSuccess)).to eql(true)
       end
       it "does not allow more than the max number of redirects" do
-        (described_class.max_redirects).times.each do |i|
+        described_class.max_redirects.times.each do |i|
           stub_redirect(uri: "#{@uri}/redirect#{i}",
                         redirect_to: "#{@uri}/redirect#{i + 1}")
         end
         final_uri = "#{@uri}/redirect#{described_class.max_redirects}"
         stub_request(:get, final_uri).with(headers: described_class.headers)
-                                .to_return(status: 200, body: "", headers: {})
+                                     .to_return(status: 200, body: "", headers: {})
 
         resp = described_class.send(:http_get, uri: "#{@uri}/redirect0")
         expect(resp.is_a?(Net::HTTPRedirection)).to eql(true)
+      end
+    end
+
+    context "#prep_http" do
+      before(:each) do
+        @uri = Faker::Internet.url
+      end
+      it "returns nil if no target is specified" do
+        target, http = described_class.send(:prep_http, target: nil)
+        expect(target).to eql(nil)
+        expect(http).to eql(nil)
+      end
+      it "accomodates HTTP" do
+        uri = @uri.gsub("https:", "http:")
+        target, http = described_class.send(:prep_http, target: uri)
+        expect(target).to eql(URI.parse(uri))
+        expect(http.use_ssl?).to eql(false)
+      end
+      it "accomodates HTTPS" do
+        uri = @uri.gsub("http:", "https:")
+        target, http = described_class.send(:prep_http, target: uri)
+        expect(target).to eql(URI.parse(uri))
+        expect(http.use_ssl?).to eql(true)
+      end
+    end
+
+    context "#prep_headers" do
+      before(:each) do
+        @headers = described_class.headers
+        @req = Net::HTTP::Get.new(Faker::Internet.url)
+      end
+      it "returns nil if no Net request is specified" do
+        expect(described_class.send(:prep_headers, request: nil)).to eql(nil)
+      end
+      it "allows additional headers" do
+        hdrs = JSON.parse({ "Foo": Faker::Lorem.word }.to_json)
+        req = described_class.send(:prep_headers, request: @req,
+                                                  additional_headers: hdrs)
+        expect(req["Foo"].present?).to eql(true)
+      end
+      it "allows base headers to be overwritten" do
+        word = Faker::Lorem.word
+        hdrs = JSON.parse({ "Accept": word }.to_json)
+        req = described_class.send(:prep_headers, request: @req,
+                                                  additional_headers: hdrs)
+        expect(req["Accept"]).to eql(word)
       end
     end
   end

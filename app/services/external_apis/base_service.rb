@@ -32,7 +32,7 @@ module ExternalApis
           "Content-Type": "application/json",
           "Accept": "application/json",
           "Accept-Encoding": "gzip",
-          "Host": "#{URI(base_url).hostname}",
+          "Host": URI(base_url).hostname.to_s,
           "User-Agent": "#{app_name} (#{app_email})"
         }
       end
@@ -72,15 +72,13 @@ module ExternalApis
 
       # Makes a GET request to the specified uri with the additional headers.
       # Additional headers are combined with the base headers defined above.
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       def http_get(uri:, additional_headers: {}, tries: 1)
         return nil unless uri.present?
 
-        uri = URI.parse(uri)
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = true if uri.scheme == "https"
-        req = Net::HTTP::Get.new(uri.request_uri)
-        headers.each { |k, v| req[k] = v }
-        additional_headers.each { |k, v| req[k] = v }
+        target, http = prep_http(target: uri)
+        req = Net::HTTP::Get.new(target.request_uri)
+        req = prep_headers(request: req, additional_headers: additional_headers)
         resp = http.request(req)
         # If we received a redirect then follow it as long as
         if resp.is_a?(Net::HTTPRedirection) && (tries < max_redirects)
@@ -88,9 +86,30 @@ module ExternalApis
                           tries: tries + 1)
         end
         resp
-      rescue StandardError => se
-        log_error(method: uri, error: se)
-        return nil
+      rescue StandardError => e
+        log_error(method: uri, error: e)
+        nil
+      end
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+      # Prepares the URI and a Net::HTTP object
+      def prep_http(target:)
+        return nil, nil unless target.present?
+
+        uri = URI.parse(target)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true if uri.scheme == "https"
+        [uri, http]
+      end
+
+      # Appends specified headers to the default headers and attaches them to
+      # the specified Net::HTTP::[verb] object
+      def prep_headers(request:, additional_headers: {})
+        return nil unless request.present?
+
+        headers.each { |k, v| request[k] = v }
+        additional_headers.each { |k, v| request[k] = v }
+        request
       end
 
     end
